@@ -1,9 +1,10 @@
 import TokenggAVAX from "@/contracts/TokenGGAvax";
 import Storage from "@/contracts/storage";
 import { encodePacked, keccak256 } from "viem";
-import { useReadContract, useSimulateContract } from "wagmi";
+import { useAccount, useReadContract, useSimulateContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 
 const Stake = () => {
+  const { chain } = useAccount()
   const useGetAddress = (key: AllContracts) => {
     const args = keccak256(
       encodePacked(["string", "string"], ["contract.address", key])
@@ -21,16 +22,28 @@ const Stake = () => {
 
   const { data } = useGetAddress("TokenggAVAX");
 
-  console.log({ data });
-
-  const { data: simulation } = useSimulateContract({
+  const { data: simulation, error } = useSimulateContract({
     address: data,
     abi: TokenggAVAX,
     functionName: "depositAVAX",
-    value: 10000000000000000000n,
+    query: {
+      retry: false,
+    },
+    value: 53180000000008n,
   });
-  console.log({ simulation });
-  return <div>Meow</div>;
+
+  const { data: hash, writeContract } = useWriteContract();
+
+  const { data: txnReceipt } = useWaitForTransactionReceipt({
+    hash
+  })
+
+  return (
+    <div className="flex flex-col">
+      <button className="disabled:bg-gray-400 w-20 mt-4 bg-green-400 cursor-pointer" disabled={!simulation} onClick={() => writeContract(simulation!.request)}>Meow</button>
+      {txnReceipt && <span>Transaction Receipt: {txnReceipt?.transactionHash}</span>}
+    </div>
+  )
 };
 
 export default Stake;
